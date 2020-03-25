@@ -191,6 +191,12 @@ The following table lists the configurable parameters of the Concourse chart and
 | `web.nameOverride` | Override the Concourse Web components name | `nil` |
 | `web.nodeSelector` | Node selector for web nodes | `{}` |
 | `web.postgresqlSecretsPath` | Specify the mount directory of the web postgresql secrets | `/concourse-postgresql` |
+| `web.prometheus.enabled` | Enable the Prometheus metrics endpoint | `false` |
+| `web.prometheus.bindIp` | IP to listen on to expose Prometheus metrics | `0.0.0.0` |
+| `web.prometheus.bindPort` | Port to listen on to expose Prometheus metrics | `9391` |
+| `web.prometheus.ServiceMonitor.enabled` | Enable the creation of a serviceMonitor object for the Prometheus operator | `false` |
+| `web.prometheus.ServiceMonitor.interval` | The interval the Prometheus endpoint is scraped | `30s` |
+| `web.prometheus.ServiceMonitor.namespace` | The namespace where the serviceMonitor object has to be created | `nil` |
 | `web.readinessProbe.httpGet.path` | Path to access on the HTTP server when performing the healthcheck | `/api/v1/info` |
 | `web.readinessProbe.httpGet.port` | Name or number of the port to access on the container | `atc` |
 | `web.replicas` | Number of Concourse Web replicas | `1` |
@@ -272,17 +278,31 @@ Be careful with introducing trailing newline characters; following the steps bel
 #
 mkdir concourse-secrets
 cd concourse-secrets
+```
 
-# Generate the files for the secrets that are required:
-# - web key pair,
-# - worker key pair, and
-# - the session signing token.
-#
-ssh-keygen -t rsa -f host-key  -N ''
+Concourse needs three sets of key-pairs in order to work:
+- web key pair,
+- worker key pair, and
+- the session signing token.
+
+You can generate all three key-pairs by following either of these two methods:
+
+##### Concourse Binary
+
+```sh
+docker run -v $PWD:/keys --rm -it concourse/concourse generate-key -t rsa -f /keys/session-signing-key
+docker run -v $PWD:/keys --rm -it concourse/concourse generate-key -t ssh -f /keys/worker-key
+docker run -v $PWD:/keys --rm -it concourse/concourse generate-key -t ssh -f /keys/host-key
+```
+
+##### ssh-keygen
+
+```sh
+ssh-keygen -t rsa -f host-key  -N '' -m PEM
 mv host-key.pub host-key-pub
-ssh-keygen -t rsa -f worker-key  -N ''
+ssh-keygen -t rsa -f worker-key  -N '' -m PEM
 mv worker-key.pub worker-key-pub
-ssh-keygen -t rsa -f session-signing-key  -N ''
+ssh-keygen -t rsa -f session-signing-key  -N '' -m PEM
 rm session-signing-key.pub
 printf "%s:%s" "concourse" "$(openssl rand -base64 24)" > local-users
 ```
@@ -291,9 +311,7 @@ All the worker-specific secrets, namely, `workerKey`, `workerKeyPub`, `hostKeyPu
 
 All other secrets are to be added to a secrets object with the name `[release name]-web`.
 
-For the time being, the secret `workerKeyPub` is to be added to both the worker and the web secret objects, until investigated within issue #13019.
-
-You'll also need to create/copy secret values for optional features. See [templates/web-secrets.yaml](templates/web-secrets.yaml) and [templates/web-secrets.yaml](templates/web-secrets.yaml)  for possible values.
+You'll also need to create/copy secret values for optional features. See [templates/web-secrets.yaml](templates/web-secrets.yaml) and [templates/worker-secrets.yaml](templates/worker-secrets.yaml)  for possible values.
 
 In the example below, we are not using the [PostgreSQL](#postgresql) chart dependency, and so we must set `postgresql-user` and `postgresql-password` secrets.
 
@@ -407,8 +425,7 @@ By default, this chart uses a PostgreSQL database deployed as a chart dependency
 
 You can also bring your own PostgreSQL. To do so, set `postgresql.enabled` to `false`, and then configure Concourse's `postgres` values (`concourse.web.postgres.*`).
 
-Note that some values get set in the form of secrets, like `postgresql-user`, `postgresql-password`, and others (see [templates/secrets.yaml](templates/secrets.yaml) for possible values and the [secrets section](#secrets) on this README for guidance on how to set those secrets).
-
+Note that some values get set in the form of secrets, like `postgresql-user`, `postgresql-password`, and others (see [templates/web-secrets.yaml](templates/web-secrets.yaml) for possible values and the [secrets section](#secrets) on this README for guidance on how to set those secrets).
 
 ### Credential Management
 

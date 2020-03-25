@@ -19,7 +19,7 @@ image: concourse/concourse
 ##      of `concourse/concourse`.
 ## Ref: https://hub.docker.com/r/concourse/concourse/tags/
 ##
-imageTag: "5.8.0"
+imageTag: "5.8.1"
 
 ## Specific image digest to use in place of a tag.
 ## Ref: https://kubernetes.io/docs/concepts/configuration/overview/#container-images
@@ -535,6 +535,31 @@ concourse:
       ##
       resource:
 
+    tracing:
+      ## Jaeger's HTTP-based Thrift collector endpoint.
+      #
+      ## Example: "http://jaeger:14268/api/traces"
+      ##
+      jaegerEndpoint:
+
+      ## Tags to include to components
+      ##
+      ## Example: "foo:bar,caz:zaz"
+      ##
+      jaegerTags:
+
+      ## Name of the service being traced
+      ##
+      ## Example: "web"
+      ##
+      jaegerService:
+
+      ## GCP's Project ID
+      ##
+      ## Example: "my-projectid"
+      ##
+      stackdriverProjectId:
+
     metrics:
       ## Host string to attach to emitted metrics.
       ##
@@ -643,6 +668,13 @@ concourse:
       ##
       bindPort: 9391
 
+      ## If Prometheus operator is used, also create a servicemonitor object
+      serviceMonitor:
+        enabled: false
+        interval: "30s"
+        # Namespace the servicemonitor object should be in
+        namespace: 
+
     riemann:
       enabled: false
 
@@ -711,9 +743,16 @@ concourse:
       ##
       useCaCert: false
 
-    ## Customize RBAC role-action mapping.
+    ## Customize RBAC role-action mapping. Pass in as a multi-line YAML string
+    ## Ref: https://concourse-ci.org/user-roles.html#configuring-rbac
+    ## Example:
+    ## configRBAC: |
+    ##   owner:
+    ##   - SetTeam
+    ##   member:
+    ##   - CreateBuild
     ##
-    configRBAC:
+    configRBAC: ""
 
     auth:
       ## Force sending secure flag on http cookies
@@ -725,10 +764,20 @@ concourse:
       duration: 24h
 
       mainTeam:
-        ## Configuration file for specifying team params.
+
+        ## Configuration file for specifying the main teams params.
         ## Ref: https://concourse-ci.org/managing-teams.html#setting-roles
+        ## Example:
+        ## config: |
+        ##   roles:
+        ##   - name: owner
+        ##     local:
+        ##       users: ["admin"]
+        ##   - name: member
+        ##     local:
+        ##       users: ["test"]
         ##
-        config:
+        config: ""
 
         ## List of local Concourse users to be included as members of the `main` team.
         ## Make sure you have local users support enabled (`concourse.web.localAuth.enabled`) and
@@ -1292,6 +1341,10 @@ concourse:
       ## Use the insecure Houdini Garden backend.
       ##
       useHoudini:
+
+      ## Use the experimental Containerd Garden backend.
+      ##
+      useContainerd:
 
       ## How long to wait for requests to Garden to complete. 0 means no timeout.
       ##
